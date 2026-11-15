@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vitalis – Crew Health Monitor</title>
+<style>
+:root{--bg:#eef1ec;--card:#fbfcfa;--tx:#17231f;--mu:#5d6b64;--bd:#d3dad2;--ok:#17814f;--wa:#b87500;--rd:#c8342b;--ac:#1f6f6b;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1614;--card:#15201d;--tx:#e6efe9;--mu:#92a39a;--bd:#263631;--ok:#43c985;--wa:#e5ab2e;--rd:#ef6a5f;--ac:#5cc7bf}}
+:root[data-theme="dark"]{--bg:#0e1614;--card:#15201d;--tx:#e6efe9;--mu:#92a39a;--bd:#263631;--ok:#43c985;--wa:#e5ab2e;--rd:#ef6a5f;--ac:#5cc7bf}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 "Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
+main{max-width:1000px;margin:0 auto;padding:20px 16px 48px}
+h1{font:700 1.7rem/1.2 "Fraunces",Georgia,serif;margin:0}
+h2{font:600 1.15rem/1.3 "Fraunces",Georgia,serif;margin:0 0 10px}
+p{margin:0}.mu{color:var(--mu);font-size:.92rem}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:end;margin-bottom:18px}
+.status{display:flex;gap:16px;align-items:center;border:2px solid var(--bd);border-radius:14px;padding:18px;background:var(--card);margin-bottom:16px}
+.status.s0{border-color:var(--ok)}.status.s1{border-color:var(--wa)}.status.s2{border-color:var(--rd)}
+.dot{flex:none;width:54px;height:54px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:1.5rem;background:var(--mu)}
+.s0 .dot{background:var(--ok)}.s1 .dot{background:var(--wa)}.s2 .dot{background:var(--rd)}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:16px;border-left-width:6px}
+.card.s0{border-left-color:var(--ok)}.card.s1{border-left-color:var(--wa)}.card.s2{border-left-color:var(--rd)}
+.badge{font-size:.8rem;font-weight:700;padding:1px 8px;border-radius:99px;color:#fff;background:var(--mu);margin-left:6px;vertical-align:middle}
+.s0 .badge{background:var(--ok)}.s1 .badge{background:var(--wa)}.s2 .badge{background:var(--rd)}
+.act{margin-top:8px;padding-top:8px;border-top:1px dashed var(--bd);font-size:.92rem}
+section.panel{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:18px;margin-bottom:16px}
+form{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+label{display:flex;flex-direction:column;font-size:.88rem;color:var(--mu);gap:3px}
+input,select,textarea{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:7px 8px;min-height:40px;width:100%}
+fieldset{grid-column:1/-1;border:1px solid var(--bd);border-radius:8px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:6px 16px}
+legend{font-size:.88rem;color:var(--mu);padding:0 6px}
+fieldset label{flex-direction:row;align-items:center;color:var(--tx);gap:6px}
+fieldset input{width:auto;min-height:0}
+button{font:inherit;font-weight:600;cursor:pointer;border-radius:8px;border:1px solid var(--ac);background:var(--ac);color:#fff;padding:9px 16px;min-height:42px}
+button.alt{background:transparent;color:var(--ac)}
+:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px;grid-column:1/-1}
+.spark{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.spark b{font-size:1.25rem}
+.spark svg{width:100%;height:56px;display:block}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{padding:5px 8px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}
+textarea{min-height:170px;font-family:ui-monospace,Consolas,monospace;font-size:.82rem}
+.alerts li{margin:4px 0}
+</style>
+</head>
+<body>
+<main>
+<header>
+ <div><h1>Vitalis</h1><p class="mu">Crew self-monitoring for long-duration missions. Log once a day; compare against your own baseline.</p></div>
+ <div class="row" style="grid-column:auto"><button class="alt" id="demo">Load 21-day demo</button><button class="alt" id="clear">Clear log</button></div>
+</header>
+
+<div id="overall" class="status"></div>
+<div id="domains" class="grid"></div>
+
+<section class="panel" aria-labelledby="ci">
+ <h2 id="ci">Daily check-in</h2>
+ <form id="f" autocomplete="off">
+  <label>Date<input type="date" id="date" required></label>
+  <label>Resting heart rate (bpm)<input type="number" id="hr" min="30" max="200" required></label>
+  <label>Systolic BP (mmHg)<input type="number" id="sys" min="70" max="220" required></label>
+  <label>SpO₂ (%)<input type="number" id="spo2" min="70" max="100" required></label>
+  <label>Temperature (°C)<input type="number" id="temp" step="0.1" min="34" max="42" required></label>
+  <label>Sleep (hours)<input type="number" id="sleep" step="0.5" min="0" max="14" required></label>
+  <label>Exercise, incl. resistive (min)<input type="number" id="ex" min="0" max="300" required></label>
+  <label>Radiation dose today (mSv)<input type="number" id="dose" step="0.01" min="0" max="500" required></label>
+  <label>Mood<select id="mood"><option value="5">5 – Great</option><option value="4">4 – Good</option><option value="3" selected>3 – Okay</option><option value="2">2 – Low</option><option value="1">1 – Very low</option></select></label>
+  <label>Stress<select id="stress"><option value="1">1 – Calm</option><option value="2">2 – Mild</option><option value="3" selected>3 – Moderate</option><option value="4">4 – High</option><option value="5">5 – Overwhelming</option></select></label>
+  <fieldset id="sym"><legend>Symptoms today</legend>
+   <label><input type="checkbox" value="fever">Fever or chills</label>
+   <label><input type="checkbox" value="rash">Rash or skin lesion</label>
+   <label><input type="checkbox" value="cough">Cough or congestion</label>
+   <label><input type="checkbox" value="chest">Chest pain or palpitations</label>
+   <label><input type="checkbox" value="back">Back or bone pain</label>
+   <label><input type="checkbox" value="vision">Blurred vision</label>
+   <label><input type="checkbox" value="nausea">Nausea or vomiting</label>
+   <label><input type="checkbox" value="irritable">Irritability or withdrawal</label>
+  </fieldset>
+  <div class="row"><button type="submit">Save check-in</button><span id="msg" class="mu" role="status"></span></div>
+ </form>
+</section>
+
+<section class="panel" aria-labelledby="tr">
+ <h2 id="tr">Trends</h2>
+ <div id="spark" class="spark"></div>
+</section>
+
+<section class="panel" aria-labelledby="al">
+ <h2 id="al">What to do now</h2>
+ <ul id="alerts" class="alerts"></ul>
+</section>
+
+<section class="panel" aria-labelledby="rp">
+ <h2 id="rp">Report for ground medical team</h2>
+ <p class="mu" style="margin-bottom:8px">Generates a plain-text summary you can copy and send with your next downlink.</p>
+ <div class="row" style="margin-bottom:8px"><button id="gen">Generate report</button></div>
+ <textarea id="rep" readonly aria-label="Report text"></textarea>
+</section>
+
+<section class="panel" aria-labelledby="lg">
+ <h2 id="lg">Log</h2>
+ <div class="scroll"><table id="log"></table></div>
+</section>
+
+<p class="mu">Vitalis is decision support, not a diagnosis. Thresholds are illustrative defaults and should be set with your flight surgeon. Chest pain, SpO₂ under 92%, or fever with rash always means contact medical support immediately.</p>
+</main>
+<script>
+const KEY="vitalis-v1";
+const $=id=>document.getElementById(id);
+const NAMES=["Normal","Watch","Act"];
+let E=[];
+try{E=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){E=[]}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(E))}catch(e){}}
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const SYM={fever:"fever or chills",rash:"rash",cough:"cough or congestion",chest:"chest pain or palpitations",back:"back or bone pain",vision:"blurred vision",nausea:"nausea or vomiting",irritable:"irritability or withdrawal"};
+
+function assess(){
+ if(!E.length)return null;
+ const last=E[E.length-1], r3=E.slice(-3), base=avg(E.slice(0,5).map(e=>e.hr));
+ const has=k=>last.sym.includes(k), D=[];
+ // Cardiovascular
+ let s=0,m=[],a="Keep logging daily. Continue aerobic exercise.";
+ const dhr=last.hr-base;
+ if(dhr>=25){s=2;m.push("Resting heart rate is "+Math.round(dhr)+" bpm above your baseline")}else if(dhr>=12){s=Math.max(s,1);m.push("Resting heart rate is "+Math.round(dhr)+" bpm above your baseline")}
+ if(last.spo2<92){s=2;m.push("SpO₂ is "+last.spo2+"%")}else if(last.spo2<95){s=Math.max(s,1);m.push("SpO₂ is "+last.spo2+"%")}
+ if(last.sys>=160){s=2;m.push("Systolic BP is "+last.sys)}else if(last.sys>=140){s=Math.max(s,1);m.push("Systolic BP is "+last.sys)}
+ if(has("chest")){s=2;m.push("You reported chest pain or palpitations")}
+ if(s===1)a="Recheck after 10 minutes of rest. Review hydration, cabin CO₂ and sodium intake. Log again this evening.";
+ if(s===2)a="Contact the flight surgeon now. Stop strenuous exercise until cleared.";
+ D.push({n:"Cardiovascular",s,m:m.join("; ")||"Heart rate, BP and SpO₂ are within range.",a});
+ // Immune
+ s=0;m=[];a="No action needed. Keep surfaces and filters on schedule.";
+ if(last.temp>=38.5){s=2;m.push("Temperature is "+last.temp+" °C")}else if(last.temp>=37.8){s=1;m.push("Temperature is "+last.temp+" °C")}
+ const isy=["fever","rash","cough"].filter(has);
+ if(isy.length){s=Math.max(s,1);m.push("Symptoms: "+isy.map(k=>SYM[k]).join(", "))}
+ if(isy.length>=2&&last.temp>=37.8)s=2;
+ const sy3=r3.filter(e=>e.sym.some(k=>["fever","rash","cough"].includes(k))).length;
+ if(sy3>=3){s=2;m.push("Immune-type symptoms for 3 days running")}
+ if(s===1)a="Isolate from crewmates where possible, wear a mask in shared modules, and recheck temperature in 4 hours.";
+ if(s===2)a="Contact the flight surgeon now. Isolate and report your symptom timeline.";
+ D.push({n:"Immune",s,m:m.join("; ")||"No fever or infection signs.",a});
+ // Bone & muscle
+ s=0;m=[];a="Exercise load is on target. Keep up resistive work.";
+ const ex3=avg(r3.map(e=>e.ex));
+ if(ex3<30){s=2;m.push("3-day exercise average is "+Math.round(ex3)+" min")}else if(ex3<60){s=1;m.push("3-day exercise average is "+Math.round(ex3)+" min")}
+ if(has("back")){s=Math.max(s,1);m.push("You reported back or bone pain")}
+ if(s===1)a="Add resistive exercise to your next session, aiming for 90–120 min per day. Report any persistent pain.";
+ if(s===2)a="Exercise is far below the bone-loss prevention target. Reschedule workouts today and tell the flight surgeon.";
+ D.push({n:"Bone & muscle",s,m:m.join("; ")||"Exercise is in the protective range.",a});
+ // Radiation
+ s=0;m=[];a="Dose is well under limits. Keep logging.";
+ const cut=new Date(last.date);cut.setDate(cut.getDate()-29);
+ const d30=sum(E.filter(e=>new Date(e.date)>=cut).map(e=>e.dose));
+ if(d30>=250){s=2;m.push("30-day dose is "+d30.toFixed(0)+" mSv")}else if(d30>=150){s=1;m.push("30-day dose is "+d30.toFixed(0)+" mSv")}
+ if(last.dose>=50){s=2;m.push("Today’s dose was "+last.dose+" mSv, a possible solar particle event")}
+ if(has("nausea")&&last.dose>=20){s=Math.max(s,1);m.push("Nausea with an elevated dose")}
+ if(s>=1)a="Move to the best-shielded area. Check the space weather alert and limit time in thin-wall modules.";
+ if(s===2)a="Shelter in the storm shelter and notify mission control.";
+ D.push({n:"Radiation",s,m:m.join("; ")||"30-day dose is "+d30.toFixed(1)+" mSv (limit 250).",a});
+ // Behavioral
+ s=0;m=[];a="Keep your routines and crew contact. Schedule a family call.";
+ if(last.sleep<4.5){s=2;m.push("Slept "+last.sleep+" h")}else if(last.sleep<6){s=1;m.push("Slept "+last.sleep+" h")}
+ if(last.mood<=2){s=Math.max(s,1);m.push("Mood is "+last.mood+"/5")}
+ if(last.stress>=4){s=Math.max(s,1);m.push("Stress is "+last.stress+"/5")}
+ if(has("irritable")){s=Math.max(s,1);m.push("You reported irritability or withdrawal")}
+ if(r3.length===3&&r3.every(e=>e.mood<=2)){s=2;m.push("Low mood for 3 days running")}
+ if(r3.length===3&&r3.every(e=>e.sleep<6)){s=Math.max(s,1);m.push("Short sleep for 3 days running")}
+ if(s===1)a="Protect an 8-hour sleep window, dim lights 1 hour before bed, and talk with a crewmate or your support contact today.";
+ if(s===2)a="Request a private conference with the behavioral health team.";
+ D.push({n:"Behavioral",s,m:m.join("; ")||"Sleep, mood and stress are in range.",a});
+ return {D,max:Math.max(...D.map(d=>d.s)),last,base};
+}
+
+function spark(vals,color){
+ if(vals.length<2)return "<svg></svg>";
+ const mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1;
+ const pts=vals.map((v,i)=>(i*(300/(vals.length-1))).toFixed(1)+","+(52-((v-mn)/rg)*46).toFixed(1)).join(" ");
+ return '<svg viewBox="0 0 300 56" preserveAspectRatio="none" role="img"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg>';
+}
+
+function render(){
+ const A=assess(), ov=$("overall");
+ if(!A){
+  ov.className="status";
+  ov.innerHTML='<div class="dot">–</div><div><h2 style="margin:0">No check-ins yet</h2><p class="mu">Fill in today’s check-in below, or load the 21-day demo to see trends and alerts.</p></div>';
+  $("domains").innerHTML="";$("alerts").innerHTML="<li class='mu'>Alerts appear after your first check-in.</li>";$("spark").innerHTML="";$("log").innerHTML="";return;
+ }
+ ov.className="status s"+A.max;
+ const icon=["✓","!","✕"][A.max];
+ const worst=A.D.filter(d=>d.s===A.max).map(d=>d.n).join(", ");
+ ov.innerHTML='<div class="dot" aria-hidden="true">'+icon+'</div><div><h2 style="margin:0">'+(A.max===0?"All systems normal":A.max===1?"Watch: "+worst:"Action needed: "+worst)+'</h2><p class="mu">Latest check-in '+A.last.date+" · "+E.length+" entries logged · heart-rate baseline "+A.base.toFixed(0)+" bpm</p></div>";
+ $("domains").innerHTML=A.D.map(d=>'<div class="card s'+d.s+'"><h2>'+d.n+'<span class="badge">'+NAMES[d.s]+'</span></h2><p>'+d.m+'</p><p class="act">'+d.a+'</p></div>').join("");
+ const al=A.D.filter(d=>d.s>0).sort((a,b)=>b.s-a.s);
+ $("alerts").innerHTML=al.length?al.map(d=>"<li><b>"+d.n+" ("+NAMES[d.s].toLowerCase()+"):</b> "+d.a+"</li>").join(""):"<li>Nothing needs action today. Keep your routine.</li>";
+ const T=[["Resting HR (bpm)","hr","#c8342b"],["Sleep (h)","sleep","#1f6f6b"],["Mood (1–5)","mood","#b87500"],["Exercise (min)","ex","#2f5fd0"],["Daily dose (mSv)","dose","#7a4fb5"]];
+ const W=E.slice(-30);
+ $("spark").innerHTML=T.map(t=>{const v=W.map(e=>e[t[1]]);return "<div><p class='mu'>"+t[0]+"</p><b>"+v[v.length-1]+"</b> <span class='mu'>avg "+avg(v).toFixed(1)+"</span>"+spark(v,t[2])+"</div>"}).join("");
+ $("log").innerHTML="<tr><th>Date</th><th>HR</th><th>BP</th><th>SpO₂</th><th>Temp</th><th>Sleep</th><th>Ex</th><th>mSv</th><th>Mood</th><th>Stress</th><th>Symptoms</th></tr>"+
+  E.slice(-14).reverse().map(e=>"<tr><td>"+e.date+"</td><td>"+e.hr+"</td><td>"+e.sys+"</td><td>"+e.spo2+"</td><td>"+e.temp+"</td><td>"+e.sleep+"</td><td>"+e.ex+"</td><td>"+e.dose+"</td><td>"+e.mood+"</td><td>"+e.stress+"</td><td>"+(e.sym.map(k=>SYM[k]).join(", ")||"–")+"</td></tr>").join("");
+}
+
+$("f").addEventListener("submit",ev=>{
+ ev.preventDefault();
+ const e={date:$("date").value,hr:+$("hr").value,sys:+$("sys").value,spo2:+$("spo2").value,temp:+$("temp").value,sleep:+$("sleep").value,ex:+$("ex").value,dose:+$("dose").value,mood:+$("mood").value,stress:+$("stress").value,sym:[...document.querySelectorAll("#sym input:checked")].map(c=>c.value)};
+ E=E.filter(x=>x.date!==e.date);E.push(e);E.sort((a,b)=>a.date<b.date?-1:1);
+ save();render();$("msg").textContent="Saved for "+e.date+".";
+ document.querySelectorAll("#sym input").forEach(c=>c.checked=false);
+ window.scrollTo({top:0,behavior:"smooth"});
+});
+
+$("demo").onclick=()=>{
+ let seed=7;const rnd=()=>(seed=(seed*9301+49297)%233280)/233280;
+ const end=new Date();E=[];
+ for(let i=20;i>=0;i--){
+  const d=new Date(end);d.setDate(d.getDate()-i);const p=(20-i)/20;
+  const sym=[];if(i<3)sym.push("cough");if(i<2&&p>.9)sym.push("irritable");
+  E.push({date:d.toISOString().slice(0,10),hr:Math.round(62+p*16+rnd()*3),sys:Math.round(118+p*14+rnd()*4),spo2:Math.round(98-p*2.5+rnd()),temp:+(36.7+(i<3?.9:0)+rnd()*.2).toFixed(1),sleep:+(7.2-p*2.2+rnd()*.6).toFixed(1),ex:Math.round(125-p*75+rnd()*10),dose:+(1.1+rnd()*.4+(i===4?3:0)).toFixed(2),mood:Math.max(1,Math.round(4.2-p*2.3+rnd()*.5)),stress:Math.min(5,Math.round(2+p*2.2+rnd()*.5)),sym});
+ }
+ save();render();
+};
+$("clear").onclick=()=>{if(confirm("Delete every logged check-in on this device?")){E=[];save();render();$("rep").value=""}};
+
+$("gen").onclick=()=>{
+ const A=assess();if(!A){$("rep").value="No data to report yet.";return}
+ const L=A.last,w=E.slice(-7);
+ let t="CREW HEALTH SUMMARY\nLatest entry: "+L.date+"   Entries: "+E.length+"\nOverall: "+NAMES[A.max].toUpperCase()+"\n\n";
+ A.D.forEach(d=>{t+=d.n+": "+NAMES[d.s]+" – "+d.m+"\n"});
+ t+="\n7-day averages: HR "+avg(w.map(e=>e.hr)).toFixed(0)+" bpm, SpO₂ "+avg(w.map(e=>e.spo2)).toFixed(1)+"%, sleep "+avg(w.map(e=>e.sleep)).toFixed(1)+" h, exercise "+avg(w.map(e=>e.ex)).toFixed(0)+" min, mood "+avg(w.map(e=>e.mood)).toFixed(1)+"/5, dose "+sum(w.map(e=>e.dose)).toFixed(1)+" mSv total.\n";
+ t+="Heart-rate baseline: "+A.base.toFixed(0)+" bpm.\nSymptoms (7 d): "+([...new Set(w.flatMap(e=>e.sym))].map(k=>SYM[k]).join(", ")||"none")+"\n";
+ $("rep").value=t;
+ try{navigator.clipboard.writeText(t)}catch(e){}
+};
+
+$("date").value=new Date().toISOString().slice(0,10);
+render();
+</script>
+</body>
+</html>
